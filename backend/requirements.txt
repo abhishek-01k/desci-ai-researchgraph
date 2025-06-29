@@ -1,0 +1,33 @@
+fastapi>=0.100.0
+uvicorn[standard]
+sqlalchemy
+pydantic>=2.0,<3.0
+pydantic-settings
+python-dotenv
+alembic
+httpx
+pytest
+email-validator
+python-docx
+pymupdf
+python-multipart
+nltk
+openai
+langchain
+langchain-community
+requests
+biopython
+sentence-transformers
+redis
+numpy<2.0
+asyncpg
+databases
+psycopg2-binary
+neo4j
+solana>=0.30.0,<0.37.0
+base58
+python-jose
+
+# Biomedical NLP
+spacy>=3.6.1
+# We'll install scispacy models separately after basic setup

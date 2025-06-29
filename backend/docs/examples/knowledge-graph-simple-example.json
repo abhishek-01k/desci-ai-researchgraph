@@ -1,0 +1,13 @@
+{
+    "claim": "The NAD+ supplementation increases lifespan in mammals",
+    "cleaned": "nad+ supplementation increases lifespan mammals",
+    "semantic_searchable": "nad+ supplementation increases lifespan mammals. Key terms: NAD+",
+    "entities": [
+        "NAD+"
+    ],
+    "biomedical_entities": {
+        "simple_chemical": [
+            "NAD+"
+        ]
+    }
+}

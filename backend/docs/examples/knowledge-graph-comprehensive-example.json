@@ -1,0 +1,103 @@
+{
+  "claim_id": "claim_001",
+  "claim_text": "TNF-alpha inhibition reduces inflammation in Alzheimer's disease.",
+  "cleaned": "tnf-alpha inhibition reduces inflammation alzheimers disease",
+  "semantic_string": "tnf-alpha inhibition reduces inflammation...",
+  "null_hypothesis_detected": true,
+  "source_type": "text",
+  "timestamp": "2025-05-21T14:00:00Z",
+  "biomedical_entities": [
+    {
+      "name": "TNF-alpha",
+      "type": "Gene"
+    },
+    {
+      "name": "inflammation",
+      "type": "Process"
+    },
+    {
+      "name": "Alzheimer's disease",
+      "type": "Disease"
+    }
+  ],
+  "related_papers": [
+    {
+      "paper_id": "PMC123456",
+      "title": "TNF-alpha pathways in Alzheimer's",
+      "doi": "10.1000/xyz123",
+      "similarity": 0.81,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/123456/",
+      "authors": [
+        { "author_id": "auth001", "name": "Jane Doe" },
+        { "author_id": "auth002", "name": "John Smith" }
+      ],
+      "cited_papers": ["PMC000111", "PMC000222"],
+      "reference_papers": ["PMC000333"]
+    }
+  ]
+}
+
+
+2. How to Connect This in Neo4j (Cypher)
+🌐 Step-by-Step Cypher Query Pattern
+// 1. Create the claim node
+MERGE (c:Claim {id: "claim_001"})
+SET c.text = "TNF-alpha inhibition reduces inflammation in Alzheimer's disease.",
+    c.cleaned = "tnf-alpha inhibition...",
+    c.null_hypothesis_detected = true,
+    c.timestamp = datetime("2025-05-21T14:00:00Z")
+
+// 2. Add biomedical entities
+WITH c
+UNWIND [
+  {name: "TNF-alpha", type: "Gene"},
+  {name: "inflammation", type: "Process"},
+  {name: "Alzheimer's disease", type: "Disease"}
+] AS ent
+MERGE (e:Entity {name: ent.name, type: ent.type})
+MERGE (c)-[:MENTIONS]->(e)
+
+// 3. Add related paper
+MERGE (p:Paper {id: "PMC123456"})
+SET p.title = "TNF-alpha pathways in Alzheimer's",
+    p.doi = "10.1000/xyz123",
+    p.similarity = 0.81,
+    p.url = "https://pubmed.ncbi.nlm.nih.gov/123456/"
+
+// 4. Link claim to paper
+MERGE (c)-[:SUPPORTED_BY]->(p)
+
+// 5. Add authors and link to paper
+WITH p
+UNWIND [
+  {author_id: "auth001", name: "Jane Doe"},
+  {author_id: "auth002", name: "John Smith"}
+] AS author
+MERGE (a:Author {id: author.author_id})
+SET a.name = author.name
+MERGE (a)-[:WROTE]->(p)
+
+// 6. Add cited and referenced papers
+WITH p
+UNWIND ["PMC000111", "PMC000222"] AS cited_id
+MERGE (cp:Paper {id: cited_id})
+MERGE (p)-[:CITED]->(cp)
+
+UNWIND ["PMC000333"] AS ref_id
+MERGE (rp:Paper {id: ref_id})
+MERGE (p)-[:REFERENCES]->(rp)
+
+
+3. Node and Relationship Types Summary
+Node Label	Properties
+Claim	id, text, cleaned, null_hypothesis_detected, timestamp
+Entity	name, type
+Paper	id, title, doi, similarity, url
+Author	id, name
+
+Relationship	From	To
+MENTIONS	Claim	Entity
+SUPPORTED_BY	Claim	Paper
+WROTE	Author	Paper
+CITED	Paper	Paper
+REFERENCES	Paper	Paper
