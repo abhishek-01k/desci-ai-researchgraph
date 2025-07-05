@@ -26,7 +26,7 @@ export default function HeroSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!repoUrl) {
       toast({
         title: "URL required",
@@ -93,13 +93,13 @@ export default function HeroSection() {
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
           Part of the ResearchGraph AI ecosystem - Enhancing research software discoverability through automated extraction of FAIR-compliant metadata using fine-tuned LLaMA models.
         </p>
-        
+
         <form onSubmit={handleSubmit} className="mx-auto mt-10 max-w-2xl space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-0 h-5 w-5 mt-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                type="url" 
+                type="url"
                 value={repoUrl}
                 onChange={handleInputChange}
                 placeholder="Enter GitHub or GitLab repository URL"
@@ -111,7 +111,7 @@ export default function HeroSection() {
                 </p>
               )}
             </div>
-            <Button 
+            <Button
               type="submit"
               size="lg"
               className="h-12 min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
@@ -134,7 +134,7 @@ export default function HeroSection() {
 
         {!analysisResults && !isLoading && (
           <div className="relative mt-32 h-[500px]">
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '15%', left: '10%', transform: 'rotate(-3deg)' } as any}
               delay={0}
               icon={<Package className="h-5 w-5" />}
@@ -143,7 +143,7 @@ export default function HeroSection() {
                 content: "numpy, pandas, scikit-learn"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '35%', left: '25%', transform: 'rotate(2deg)' } as any}
               delay={0.3}
               icon={<Users className="h-5 w-5" />}
@@ -152,7 +152,7 @@ export default function HeroSection() {
                 content: "Dr. Jane Smith, Alex Johnson"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ bottom: '20%', left: '15%', transform: 'rotate(-2deg)' } as any}
               delay={0.6}
               icon={<BookOpen className="h-5 w-5" />}
@@ -161,7 +161,7 @@ export default function HeroSection() {
                 content: "10.1000/xyz123"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '20%', right: '20%', transform: 'rotate(3deg)' } as any}
               delay={0.9}
               icon={<FileCode className="h-5 w-5" />}
@@ -170,7 +170,7 @@ export default function HeroSection() {
                 content: "pip install -r requirements.txt"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '45%', right: '30%', transform: 'rotate(-2deg)' } as any}
               delay={1.2}
               icon={<UserPlus className="h-5 w-5" />}
@@ -179,7 +179,7 @@ export default function HeroSection() {
                 content: "Maria Garcia, Tom Wilson"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ bottom: '25%', right: '15%', transform: 'rotate(10deg)' } as any}
               delay={1.5}
               icon={<Scale className="h-5 w-5" />}
@@ -188,7 +188,7 @@ export default function HeroSection() {
                 content: "MIT License"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '60%', left: '35%', transform: 'rotate(-5deg)' } as any}
               delay={1.8}
               icon={<Tag className="h-5 w-5" />}
@@ -197,7 +197,7 @@ export default function HeroSection() {
                 content: "machine learning, data analysis"
               }}
             />
-            <FloatingMetadataCard 
+            <FloatingMetadataCard
               position={{ top: '25%', left: '45%', transform: 'rotate(1deg)' } as any}
               delay={2.1}
               icon={<Coins className="h-5 w-5" />}

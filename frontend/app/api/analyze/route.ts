@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { extractGitHubContent, extractGitLabContent } from '@/lib/extractors';
 import { processRepositoryData } from '@/lib/utils';
+import connectDB from '@/lib/db/connect';
+import Analysis from '@/lib/db/models/Analysis';
 
 export async function POST(request: Request) {
   try {
+    // Connect to MongoDB
+    await connectDB();
+
     const { url } = await request.json();
-    
+
     if (!url) {
       return NextResponse.json({ error: 'Repository URL is required' }, { status: 400 });
     }
@@ -15,9 +20,9 @@ export async function POST(request: Request) {
     const cookieStore = cookies();
     const token = cookieStore.get(`vcs-token-${platform}`)?.value;
 
-    const content = platform === 'github' 
+    const content = platform === 'github'
       ? await extractGitHubContent(url, token)
-      : await extractGitLabContent(url, token); 
+      : await extractGitLabContent(url, token);
 
     const llmApiUrl = process.env.LLM_API_URL || 'https://your-default-llm-api-url.com/generate_ollama_response';
     const llmModelName = process.env.LLM_MODEL_NAME || 'metadata-extractor';
@@ -42,9 +47,34 @@ export async function POST(request: Request) {
 
       const llmResult = await llmResponse.json();
       console.log('LLM API response:', llmResult);
-      
+
       const { success, responseData, formattedRawResponse, message } = processRepositoryData(llmResult);
-      
+
+      // Save analysis results to MongoDB
+      try {
+        const analysis = new Analysis({
+          repositoryUrl: url,
+          platform,
+          content,
+          llmResponse: llmResult,
+          processedData: {
+            success,
+            data: responseData,
+            parsingError: !success,
+            message,
+            rawResponse: formattedRawResponse
+          },
+          success,
+          message
+        });
+
+        await analysis.save();
+        console.log('Analysis saved to database with ID:', analysis._id);
+      } catch (dbError) {
+        console.error('Error saving to database:', dbError);
+        // Don't fail the request if database save fails
+      }
+
       return NextResponse.json({
         success,
         data: responseData,

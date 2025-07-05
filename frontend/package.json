@@ -28,6 +28,8 @@
     "eslint-config-next": "13.5.1",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.446.0",
+    "mongodb": "^6.17.0",
+    "mongoose": "^8.16.1",
     "next": "13.5.1",
     "next-themes": "^0.3.0",
     "postcss": "8.4.30",
