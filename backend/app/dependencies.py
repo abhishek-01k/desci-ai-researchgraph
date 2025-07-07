@@ -1,7 +1,6 @@
 import os
 from jose import jwt, JWTError
 from typing import AsyncIterator, Annotated
-from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
@@ -13,36 +12,16 @@ from app.repositories.user_repo import UserRepository
 from app.external_adapters import google
 from app.schemas.auth import TokenData
 
-from .database import get_sessionmaker
+from .database import get_session_factory, get_db_session
 
 # TODO: Centralize this configs
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 ALGORITHM = "HS256"
 
 
-@asynccontextmanager
-async def get_async_session() -> AsyncIterator[AsyncSession]:
-    """Proper async context manager for database sessions
-    with full transaction handling"""
-    session_factory = get_sessionmaker()
-    session = session_factory()
-
-    print("Database session created")
-    try:
-        yield session
-        await session.commit()
-        print("Transaction committed")
-    except Exception as e:
-        await session.rollback()
-        print(f"Transaction rolled back: {str(e)}")
-        raise
-    finally:
-        await session.close()
-        print("Session closed")
-
-
 async def get_db() -> AsyncIterator[AsyncSession]:
-    async with get_async_session() as session:
+    """Get database session using the database module's function"""
+    async for session in get_db_session():
         yield session
 
 

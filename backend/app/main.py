@@ -67,6 +67,27 @@ def read_root():
     return {"message": "Welcome to FastAPI + MySQL 🚀"}
 
 
+# Health check endpoint for Docker
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and Docker health checks"""
+    try:
+        # You could add database connectivity check here if needed
+        return {
+            "status": "healthy",
+            "service": "ResearchGraph AI Backend",
+            "version": "1.0.0"
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "error": str(e)
+            }
+        )
+
+
 # Register your sub-routers to the main router
 api_router.include_router(auth_router.router, prefix="/auth", tags=["Auth"])
 
