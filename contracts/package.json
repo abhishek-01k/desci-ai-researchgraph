@@ -3,7 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:flow": "hardhat run scripts/deploy.js --network flowEVMTestnet",
+    "verify": "hardhat verify",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
   },
   "keywords": [],
   "author": "",
@@ -11,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@openzeppelin/contracts": "^5.3.0",
+    "dotenv": "^17.0.1",
     "hardhat": "^2.25.0"
   },
   "devDependencies": {

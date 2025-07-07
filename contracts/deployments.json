@@ -1,0 +1,18 @@
+{
+  "network": "flowEVMTestnet",
+  "chainId": "545",
+  "deployer": "0x268d62aba7C42fCB4D72A83137DB503935f764fF",
+  "timestamp": "2025-07-07T01:41:41.339Z",
+  "contracts": {
+    "ResearchIPNFT": {
+      "address": "0x8E7ADAe9b3bf7e70Dfea44ca31C7b5331a4ED09b",
+      "constructorArgs": []
+    },
+    "ResearchDAOSimple": {
+      "address": "0x1e41e58c7F0b3766ADa3c7f72cf5cc056E571895",
+      "constructorArgs": [
+        "0x8E7ADAe9b3bf7e70Dfea44ca31C7b5331a4ED09b"
+      ]
+    }
+  }
+}
