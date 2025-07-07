@@ -12,7 +12,7 @@ router = APIRouter()
 async def extract_text(file: UploadFile = File(...)):
     try:
         text = await extract_text_from_file(file)
-        return {"extracted_text": text}
+        return {"text": text, "content": text, "title": file.filename}
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:

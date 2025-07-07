@@ -84,9 +84,21 @@ class UserLoginRequest(BaseModel):
     email: str = Field(..., description="User's email address")
     password: str = Field(..., description="User's password")
 
+# Define AnalysisType enum for the main file
+from enum import Enum
+
+class AnalysisType(Enum):
+    """Types of research analysis available"""
+    NULL_RESULTS = "null_results"
+    ENTITY_EXTRACTION = "entity_extraction"
+    HYPOTHESIS_GENERATION = "hypothesis_generation"
+    QUALITY_ASSESSMENT = "quality_assessment"
+    CITATION_ANALYSIS = "citation_analysis"
+    KNOWLEDGE_GRAPH = "knowledge_graph"
+
 # Import services (these would be created)
 try:
-    from app.services.research_analysis_service import research_analysis_service, AnalysisType
+    from app.services.research_analysis_service import research_analysis_service
     from app.services.knowledge_graph_service import knowledge_graph_service
     from app.services.auth_service import auth_service
     from app.services.paper_service import paper_service
