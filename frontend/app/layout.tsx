@@ -4,6 +4,8 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import Navigation from '@/components/layout/Navigation';
 import { Toaster } from '@/components/ui/toaster';
+import ResearchAssistantProvider from '@/components/providers/ResearchAssistantProvider';
+import { Web3Provider } from '@/components/providers/Web3Provider';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -50,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="antialiased">
+        <Web3Provider>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -63,7 +66,9 @@ export default function RootLayout({
             </main>
           </div>
           <Toaster />
+            <ResearchAssistantProvider />
         </ThemeProvider>
+        </Web3Provider>
       </body>
     </html>
   );

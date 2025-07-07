@@ -1,7 +1,7 @@
 import HeroSection from "@/components/sections/HeroSection";
 import FeaturesGrid from "@/components/sections/FeaturesGrid";
 import HowItWorks from "@/components/sections/HowItWorks";
-import ResearchDashboard from "@/components/sections/ResearchDashboard";
+import EnhancedDashboard from "@/components/sections/EnhancedDashboard";
 import KnowledgeGraphDemo from "@/components/sections/KnowledgeGraphDemo";
 import Community from "@/components/sections/Community";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,7 +13,7 @@ export default function Home() {
         <HeroSection />
         <div className="space-y-24 pb-24">
           <FeaturesGrid />
-          <ResearchDashboard />
+          <EnhancedDashboard />
           <KnowledgeGraphDemo />
           <HowItWorks />
           <Community />

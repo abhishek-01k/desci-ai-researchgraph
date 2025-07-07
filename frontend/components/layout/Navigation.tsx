@@ -17,7 +17,8 @@ import {
   Search,
   Bell,
   Plus,
-  ChevronDown
+  ChevronDown,
+  Cloud
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { cn } from '@/lib/utils';
+import { WalletConnectButton } from '@/components/ui/WalletConnect';
+import { useAccount } from 'wagmi';
 
 const navigationItems = [
   {
@@ -59,6 +62,12 @@ const navigationItems = [
     badge: null,
   },
   {
+    name: 'Filecoin Storage',
+    href: '/filecoin',
+    icon: Cloud,
+    badge: 'FVM',
+  },
+  {
     name: 'Collaborate',
     href: '/collaborate',
     icon: User,
@@ -70,6 +79,10 @@ export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { address, isConnected } = useAccount();
+  
+  // Use wallet connection state for authentication
+  const walletConnected = isConnected && address;
 
   const handleLogout = () => {
     logout();
@@ -87,13 +100,13 @@ export default function Navigation() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Logo />
+              {/* <Logo /> */}
               <span className="text-xl font-bold">ResearchGraph AI</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          {isAuthenticated && (
+          {walletConnected && (
             <div className="hidden md:flex md:items-center md:space-x-8">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
@@ -125,7 +138,7 @@ export default function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            {isAuthenticated ? (
+            {walletConnected ? (
               <>
                 <Button variant="ghost" size="sm">
                   <Search className="h-4 w-4" />
@@ -138,41 +151,11 @@ export default function Navigation() {
                   <span>New Analysis</span>
                 </Button>
                 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-medium">{user?.name}</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem>
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <WalletConnectButton />
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/login">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link href="/register">
-                  <Button>Get Started</Button>
-                </Link>
+                <WalletConnectButton />
               </div>
             )}
           </div>
@@ -203,7 +186,7 @@ export default function Navigation() {
           className="md:hidden"
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-background border-b">
-            {isAuthenticated ? (
+            {walletConnected ? (
               <>
                 {navigationItems.map((item) => {
                   const Icon = item.icon;
@@ -238,50 +221,22 @@ export default function Navigation() {
                       <User className="h-5 w-5" />
                     </div>
                     <div className="ml-3">
-                      <div className="text-base font-medium">{user?.name}</div>
-                      <div className="text-sm text-muted-foreground">{user?.email}</div>
+                      <div className="text-base font-medium">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
+                      <div className="text-sm text-muted-foreground">Wallet Connected</div>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Link
-                      href="/profile"
-                      className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                    >
-                      Logout
-                    </button>
+                    <div className="px-3 py-2">
+                      <WalletConnectButton />
+                    </div>
                   </div>
                 </div>
               </>
             ) : (
               <div className="space-y-1">
-                <Link
-                  href="/login"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
+                <div className="px-3 py-2">
+                  <WalletConnectButton />
+                </div>
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Upload, 
@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FileUpload } from '@/components/ui/file-upload';
 import { useToast } from '@/hooks/use-toast';
 import { useResearchStore } from '@/lib/stores/research-store';
 
@@ -90,28 +91,23 @@ export default function AnalysisPage() {
   const [currentSteps, setCurrentSteps] = useState<AnalysisStep[]>(analysisSteps);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('upload');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [analysisOptions, setAnalysisOptions] = useState({
+    extractEntities: true,
+    detectNullResults: true,
+    generateSummary: true,
+    generateHypotheses: true,
+    qualityAssessment: true,
+    fairAssessment: true,
+  });
   const { toast } = useToast();
   const { addPaper, startAnalysis } = useResearchStore();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type === 'application/pdf' || file.type === 'text/plain' || 
-          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        setSelectedFile(file);
-        toast({
-          title: 'File selected',
-          description: `${file.name} is ready for analysis.`,
-        });
-      } else {
-        toast({
-          title: 'Unsupported file type',
-          description: 'Please select a PDF, Word document, or text file.',
-          variant: 'destructive',
-        });
-      }
-    }
+  const updateStepProgress = (stepId: string, status: AnalysisStep['status'], progress: number) => {
+    setCurrentSteps(steps => 
+      steps.map(step => 
+        step.id === stepId ? { ...step, status, progress } : step
+      )
+    );
   };
 
   const handleStartAnalysis = async () => {
@@ -126,75 +122,130 @@ export default function AnalysisPage() {
 
     setIsAnalyzing(true);
     setActiveTab('results');
+    setAnalysisResults(null);
 
-    // Simulate analysis steps
-    const steps = [...currentSteps];
-    
-    for (let i = 0; i < steps.length; i++) {
-      steps[i].status = 'processing';
-      setCurrentSteps([...steps]);
+    // Reset steps
+    setCurrentSteps(analysisSteps.map(step => ({ ...step, status: 'pending' as const, progress: 0 })));
 
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-      // Update progress
-      for (let progress = 0; progress <= 100; progress += 10) {
-        steps[i].progress = progress;
-        setCurrentSteps([...steps]);
-        await new Promise(resolve => setTimeout(resolve, 50));
+    try {
+      const formData = new FormData();
+      
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      } else {
+        formData.append('text', analysisText);
       }
 
-      steps[i].status = 'completed';
-      steps[i].progress = 100;
-      setCurrentSteps([...steps]);
-    }
+      // Add analysis options
+      formData.append('extractEntities', analysisOptions.extractEntities.toString());
+      formData.append('detectNullResults', analysisOptions.detectNullResults.toString());
+      formData.append('generateSummary', analysisOptions.generateSummary.toString());
+      formData.append('generateHypotheses', analysisOptions.generateHypotheses.toString());
+      formData.append('qualityAssessment', analysisOptions.qualityAssessment.toString());
+      formData.append('fairAssessment', analysisOptions.fairAssessment.toString());
 
-    // Mock analysis results
-    const mockResults = {
-      summary: "This research paper investigates novel approaches to CRISPR gene editing in cancer therapy, demonstrating significant improvements in targeting accuracy and reduced off-target effects.",
-      keyFindings: [
-        "Novel guide RNA design improves targeting specificity by 87%",
-        "Reduced off-target effects observed in 94% of test cases",
-        "Potential for clinical application in solid tumor treatment",
-        "Cost-effective implementation compared to existing methods"
-      ],
-      hypotheses: [
-        "Enhanced guide RNA stability could further improve targeting accuracy",
-        "Combination with immunotherapy may amplify therapeutic effects",
-        "Application to other cancer types beyond solid tumors shows promise"
-      ],
-      qualityScore: 8.7,
-      nullResultsDetected: false,
-      entities: [
-        { name: "CRISPR-Cas9", type: "method", confidence: 0.95, mentions: 23 },
-        { name: "Guide RNA", type: "chemical", confidence: 0.92, mentions: 18 },
-        { name: "Cancer therapy", type: "disease", confidence: 0.89, mentions: 15 },
-        { name: "Off-target effects", type: "method", confidence: 0.88, mentions: 12 }
-      ],
-      metadata: {
-        methodology: ["Experimental design", "In vitro studies", "Statistical analysis"],
-        datasets: ["Cell line data", "Patient samples", "Control groups"],
-        tools: ["CRISPR-Cas9", "Flow cytometry", "qPCR"],
-        reproducibility: {
-          score: 8.5,
-          factors: ["Clear methodology", "Available data", "Detailed protocols"]
-        },
-        fairness: {
-          findable: true,
-          accessible: true,
-          interoperable: false,
-          reusable: true
+      // Start analysis steps
+      updateStepProgress('extraction', 'processing', 0);
+      
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Analysis failed');
+      }
+
+      updateStepProgress('extraction', 'completed', 100);
+      updateStepProgress('preprocessing', 'processing', 0);
+
+      const result = await response.json();
+      
+      // Complete remaining steps
+      const stepsToComplete = ['preprocessing', 'entity-extraction', 'analysis', 'hypothesis-generation', 'quality-assessment'];
+      
+      for (let i = 0; i < stepsToComplete.length; i++) {
+        const stepId = stepsToComplete[i];
+        updateStepProgress(stepId, 'processing', 0);
+        
+        // Simulate progress for visual feedback
+        for (let progress = 0; progress <= 100; progress += 20) {
+          updateStepProgress(stepId, 'processing', progress);
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
+        
+        updateStepProgress(stepId, 'completed', 100);
       }
-    };
 
-    setAnalysisResults(mockResults);
-    setIsAnalyzing(false);
+      // Transform backend response to match frontend expectations
+      // The backend response is nested: result.data.data contains the actual analysis
+      const backendData = result.data.data || result.data;
+      
+      const transformedResults = {
+        ...backendData,
+        // Add summary from paper analysis
+        summary: backendData.paper_analysis?.abstract_summary && backendData.paper_analysis.abstract_summary !== 'No abstract provided' 
+          ? backendData.paper_analysis.abstract_summary
+          : `Research analysis completed with ${backendData.entities ? Object.values(backendData.entities).flat().length : 0} entities extracted and ${backendData.null_results?.detected ? 'null results detected' : 'no null results found'}.`,
+        
+        // Transform entities from object of arrays to array of objects
+        entities: backendData.entities ? Object.entries(backendData.entities).flatMap(([type, items]: [string, any]) =>
+          (Array.isArray(items) ? items : []).map((item: string) => ({
+            name: item,
+            type: type.slice(0, -1), // Remove plural 's'
+            confidence: 0.8 // Default confidence
+          }))
+        ) : [],
+        
+        // Transform hypotheses to match expected format
+        hypotheses: backendData.generated_hypotheses ? 
+          backendData.generated_hypotheses.map((h: any) => 
+            typeof h === 'string' ? h : h.hypothesis || h
+          ) : [],
+        
+        // Add key findings from null results
+        key_findings: backendData.null_results?.findings || [],
+        
+        // Map quality assessment scores for AI Insights
+        quality_score: backendData.quality_assessment?.reproducibility_score || 0,
+        methodology_score: backendData.quality_assessment?.methodology_score || 0,
+        data_score: backendData.quality_assessment?.data_quality_score || 0,
+        overall_quality: backendData.quality_assessment?.overall_score || 0,
+        
+        // Add null results info
+        null_results_detected: backendData.null_results?.detected || false,
+        null_results_confidence: backendData.null_results?.confidence || 0,
+        
+        // Add metadata
+        analysis_timestamp: backendData.paper_analysis?.analysis_timestamp,
+        content_length: backendData.paper_analysis?.content_length,
+        title: backendData.paper_analysis?.title
+      };
+      
+      setAnalysisResults(transformedResults);
+      
+      toast({
+        title: 'Analysis completed!',
+        description: 'Your research analysis is ready for review.',
+      });
 
-    toast({
-      title: 'Analysis completed!',
-      description: 'Your research analysis is ready for review.',
-    });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      
+      // Mark current step as error
+      const processingStep = currentSteps.find(step => step.status === 'processing');
+      if (processingStep) {
+        updateStepProgress(processingStep.id, 'error', 0);
+      }
+      
+      toast({
+        title: 'Analysis failed',
+        description: error instanceof Error ? error.message : 'An error occurred during analysis.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const getStepIcon = (status: string) => {
@@ -208,6 +259,124 @@ export default function AnalysisPage() {
       default:
         return <div className="h-5 w-5 rounded-full border-2 border-gray-300" />;
     }
+  };
+
+  const handleOptionChange = (option: keyof typeof analysisOptions) => {
+    setAnalysisOptions(prev => ({
+      ...prev,
+      [option]: !prev[option]
+    }));
+  };
+
+  const handleExport = () => {
+    if (!analysisResults) return;
+    
+    const exportData = {
+      title: analysisResults.title || 'Analysis Results',
+      timestamp: analysisResults.analysis_timestamp,
+      summary: analysisResults.summary,
+      key_findings: analysisResults.key_findings,
+      hypotheses: analysisResults.hypotheses,
+      entities: analysisResults.entities,
+      quality_metrics: {
+        overall_quality: analysisResults.overall_quality,
+        methodology_score: analysisResults.methodology_score,
+        quality_score: analysisResults.quality_score,
+        data_score: analysisResults.data_score
+      },
+      null_results: {
+        detected: analysisResults.null_results_detected,
+        confidence: analysisResults.null_results_confidence,
+        findings: analysisResults.key_findings
+      }
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analysis-results-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Export successful',
+      description: 'Analysis results have been downloaded as JSON file.',
+    });
+  };
+
+  const handleShare = () => {
+    if (!analysisResults) return;
+    
+    const shareText = `🧬 ResearchGraph AI Analysis Results
+
+Title: ${analysisResults.title || 'Research Analysis'}
+Quality Score: ${analysisResults.overall_quality || 'N/A'}/10
+
+Key Findings:
+${analysisResults.key_findings?.slice(0, 3).map((finding: string, i: number) => `${i + 1}. ${finding}`).join('\n') || 'No key findings'}
+
+Generated Hypotheses: ${analysisResults.hypotheses?.length || 0}
+Extracted Entities: ${analysisResults.entities?.length || 0}
+
+Analyzed with ResearchGraph AI 🚀`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'ResearchGraph AI Analysis Results',
+        text: shareText,
+        url: window.location.href
+      }).then(() => {
+        toast({
+          title: 'Shared successfully',
+          description: 'Analysis results have been shared.',
+        });
+      }).catch(() => {
+        // Fallback to clipboard
+        navigator.clipboard.writeText(shareText);
+        toast({
+          title: 'Copied to clipboard',
+          description: 'Analysis summary has been copied to your clipboard.',
+        });
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      toast({
+        title: 'Copied to clipboard',
+        description: 'Analysis summary has been copied to your clipboard.',
+      });
+    }
+  };
+
+  const handleSave = () => {
+    if (!analysisResults) return;
+    
+    // Save to localStorage for now (in a real app, this would save to a database)
+    const savedAnalyses = JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
+    const analysisToSave = {
+      id: Date.now().toString(),
+      title: analysisResults.title || 'Untitled Analysis',
+      timestamp: analysisResults.analysis_timestamp || new Date().toISOString(),
+      summary: analysisResults.summary,
+      overall_quality: analysisResults.overall_quality,
+      data: analysisResults
+    };
+    
+    savedAnalyses.unshift(analysisToSave);
+    // Keep only the last 10 analyses
+    if (savedAnalyses.length > 10) {
+      savedAnalyses.splice(10);
+    }
+    
+    localStorage.setItem('savedAnalyses', JSON.stringify(savedAnalyses));
+    
+    toast({
+      title: 'Analysis saved',
+      description: 'Your analysis has been saved locally and can be accessed later.',
+    });
   };
 
   return (
@@ -254,36 +423,22 @@ export default function AnalysisPage() {
                   Upload PDF, Word, or text files for analysis
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg font-medium">
-                    {selectedFile ? selectedFile.name : 'Drop your file here or click to browse'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Supports PDF, DOC, DOCX, and TXT files up to 50MB
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt"
-                  onChange={handleFileSelect}
-                  className="hidden"
+              <CardContent>
+                <FileUpload
+                  onFilesSelected={(files) => {
+                    if (files.length > 0) {
+                      setSelectedFile(files[0]);
+                      toast({
+                        title: 'File selected',
+                        description: `${files[0].name} is ready for analysis.`,
+                      });
+                    } else {
+                      setSelectedFile(null);
+                    }
+                  }}
+                  maxFiles={1}
+                  maxSize={50 * 1024 * 1024} // 50MB
                 />
-                {selectedFile && (
-                  <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
-                    <div className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                      <span className="text-sm text-green-800 dark:text-green-200">
-                        File ready for analysis: {selectedFile.name}
-                      </span>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -305,12 +460,21 @@ export default function AnalysisPage() {
                     id="analysis-text"
                     placeholder="Paste your research paper text, abstract, or any scientific content here..."
                     value={analysisText}
-                    onChange={(e) => setAnalysisText(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAnalysisText(e.target.value)}
                     className="min-h-[200px] resize-none"
                   />
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {analysisText.length} characters
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>{analysisText.length} characters</span>
+                  {analysisText.length > 0 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setAnalysisText('')}
+                    >
+                      Clear text
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -330,27 +494,57 @@ export default function AnalysisPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="hypothesis" defaultChecked />
+                  <input 
+                    type="checkbox" 
+                    id="hypothesis" 
+                    checked={analysisOptions.generateHypotheses}
+                    onChange={() => handleOptionChange('generateHypotheses')}
+                  />
                   <Label htmlFor="hypothesis">Generate Hypotheses</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="entities" defaultChecked />
+                  <input 
+                    type="checkbox" 
+                    id="entities" 
+                    checked={analysisOptions.extractEntities}
+                    onChange={() => handleOptionChange('extractEntities')}
+                  />
                   <Label htmlFor="entities">Extract Entities</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="quality" defaultChecked />
+                  <input 
+                    type="checkbox" 
+                    id="quality" 
+                    checked={analysisOptions.qualityAssessment}
+                    onChange={() => handleOptionChange('qualityAssessment')}
+                  />
                   <Label htmlFor="quality">Quality Assessment</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="null-results" defaultChecked />
+                  <input 
+                    type="checkbox" 
+                    id="null-results" 
+                    checked={analysisOptions.detectNullResults}
+                    onChange={() => handleOptionChange('detectNullResults')}
+                  />
                   <Label htmlFor="null-results">Null Results Detection</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="reproducibility" defaultChecked />
-                  <Label htmlFor="reproducibility">Reproducibility Check</Label>
+                  <input 
+                    type="checkbox" 
+                    id="summary" 
+                    checked={analysisOptions.generateSummary}
+                    onChange={() => handleOptionChange('generateSummary')}
+                  />
+                  <Label htmlFor="summary">Generate Summary</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="fair" defaultChecked />
+                  <input 
+                    type="checkbox" 
+                    id="fair" 
+                    checked={analysisOptions.fairAssessment}
+                    onChange={() => handleOptionChange('fairAssessment')}
+                  />
                   <Label htmlFor="fair">FAIR Data Assessment</Label>
                 </div>
               </div>
@@ -412,24 +606,24 @@ export default function AnalysisPage() {
             </Card>
           ) : analysisResults ? (
             <div className="space-y-6">
-              {/* Summary */}
+              {/* Analysis Results Display */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      Analysis Summary
+                      Analysis Results
                     </span>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleExport}>
                         <Download className="h-4 w-4 mr-2" />
                         Export
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleShare}>
                         <Share className="h-4 w-4 mr-2" />
                         Share
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleSave}>
                         <Bookmark className="h-4 w-4 mr-2" />
                         Save
                       </Button>
@@ -437,92 +631,64 @@ export default function AnalysisPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {analysisResults.summary}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-4">
-                    <Badge variant="secondary">
-                      Quality Score: {analysisResults.qualityScore}/10
-                    </Badge>
-                    <Badge variant={analysisResults.nullResultsDetected ? "destructive" : "default"}>
-                      {analysisResults.nullResultsDetected ? "Null Results Detected" : "No Null Results"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Key Findings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Key Findings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {analysisResults.keyFindings.map((finding: string, index: number) => (
-                      <li key={index} className="flex items-start space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{finding}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* Generated Hypotheses */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    Generated Hypotheses
-                  </CardTitle>
-                  <CardDescription>
-                    AI-generated research hypotheses based on your content
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {analysisResults.hypotheses.map((hypothesis: string, index: number) => (
-                      <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
-                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          Hypothesis {index + 1}
-                        </p>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                          {hypothesis}
-                        </p>
+                  <div className="space-y-4">
+                    {analysisResults.summary && (
+                      <div>
+                        <h4 className="font-medium mb-2">Summary</h4>
+                        <p className="text-muted-foreground">{analysisResults.summary}</p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Extracted Entities */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Extracted Entities
-                  </CardTitle>
-                  <CardDescription>
-                    Scientific entities identified in your research
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {analysisResults.entities.map((entity: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                        <div>
-                          <p className="font-medium">{entity.name}</p>
-                          <p className="text-sm text-muted-foreground capitalize">{entity.type}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{Math.round(entity.confidence * 100)}%</p>
-                          <p className="text-xs text-muted-foreground">{entity.mentions} mentions</p>
+                    )}
+                    
+                    {analysisResults.key_findings && (
+                      <div>
+                        <h4 className="font-medium mb-2">Key Findings</h4>
+                        <ul className="space-y-1">
+                          {analysisResults.key_findings.map((finding: string, index: number) => (
+                            <li key={index} className="flex items-start space-x-2">
+                              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm">{finding}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {analysisResults.hypotheses && (
+                      <div>
+                        <h4 className="font-medium mb-2">Generated Hypotheses</h4>
+                        <div className="space-y-2">
+                          {analysisResults.hypotheses.map((hypothesis: string, index: number) => (
+                            <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                Hypothesis {index + 1}
+                              </p>
+                              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                {hypothesis}
+                              </p>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
+                    )}
+                    
+                    {analysisResults.entities && (
+                      <div>
+                        <h4 className="font-medium mb-2">Extracted Entities</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {analysisResults.entities.map((entity: any, index: number) => (
+                            <div key={index} className="flex items-center justify-between p-2 border rounded">
+                              <div>
+                                <p className="font-medium text-sm">{entity.name}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{entity.type}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-medium">{Math.round(entity.confidence * 100)}%</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -550,23 +716,38 @@ export default function AnalysisPage() {
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium">Reproducibility</span>
-                      <span className="text-sm text-muted-foreground">8.5/10</span>
+                      <span className="text-sm text-muted-foreground">
+                        {analysisResults?.quality_score ? `${analysisResults.quality_score.toFixed(1)}/10` : 'N/A'}
+                      </span>
                     </div>
-                    <Progress value={85} className="h-2" />
+                    <Progress value={analysisResults?.quality_score ? (analysisResults.quality_score / 10) * 100 : 0} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium">Methodology Clarity</span>
-                      <span className="text-sm text-muted-foreground">9.2/10</span>
+                      <span className="text-sm text-muted-foreground">
+                        {analysisResults?.methodology_score ? `${analysisResults.methodology_score.toFixed(1)}/10` : 'N/A'}
+                      </span>
                     </div>
-                    <Progress value={92} className="h-2" />
+                    <Progress value={analysisResults?.methodology_score ? (analysisResults.methodology_score / 10) * 100 : 0} className="h-2" />
                   </div>
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium">Data Availability</span>
-                      <span className="text-sm text-muted-foreground">7.8/10</span>
+                      <span className="text-sm text-muted-foreground">
+                        {analysisResults?.data_score ? `${analysisResults.data_score.toFixed(1)}/10` : 'N/A'}
+                      </span>
                     </div>
-                    <Progress value={78} className="h-2" />
+                    <Progress value={analysisResults?.data_score ? (analysisResults.data_score / 10) * 100 : 0} className="h-2" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium">Overall Quality</span>
+                      <span className="text-sm text-muted-foreground">
+                        {analysisResults?.overall_quality ? `${analysisResults.overall_quality.toFixed(1)}/10` : 'N/A'}
+                      </span>
+                    </div>
+                    <Progress value={analysisResults?.overall_quality ? (analysisResults.overall_quality / 10) * 100 : 0} className="h-2" />
                   </div>
                 </div>
               </CardContent>
@@ -580,23 +761,88 @@ export default function AnalysisPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Findable</span>
+                    {analysisResults?.title ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Accessible</span>
+                    {analysisResults?.summary ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Interoperable</span>
+                    {analysisResults?.entities && analysisResults.entities.length > 0 ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Reusable</span>
+                    {analysisResults?.overall_quality && analysisResults.overall_quality > 7 ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Null Results Detection */}
+            {analysisResults && (
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Null Results Detection
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                      <div>
+                        <p className="font-medium">
+                          {analysisResults.null_results_detected ? 'Null results detected' : 'No null results detected'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Confidence: {((analysisResults.null_results_confidence || 0) * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {analysisResults.null_results_detected ? (
+                          <AlertCircle className="h-8 w-8 text-yellow-600" />
+                        ) : (
+                          <CheckCircle className="h-8 w-8 text-green-600" />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {analysisResults.key_findings && analysisResults.key_findings.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-2">Null Result Findings:</h5>
+                        <ul className="space-y-1">
+                          {analysisResults.key_findings.map((finding: string, index: number) => (
+                            <li key={index} className="text-sm text-muted-foreground">• {finding}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs text-muted-foreground p-3 bg-blue-50 dark:bg-blue-950/30 rounded">
+                      <strong>Why this matters:</strong> Null results are important for scientific progress but often go unpublished. 
+                      Detecting and properly reporting null results helps prevent publication bias and saves other researchers time.
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

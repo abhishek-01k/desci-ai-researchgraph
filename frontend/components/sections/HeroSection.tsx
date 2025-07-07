@@ -1,75 +1,51 @@
 'use client';
 
-import { useState } from "react";
-import { Search, ArrowRight, Package, FileCode, Users, UserPlus, BookOpen, Scale, Tag, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { validateRepoUrl, getPlatformFromUrl } from "@/lib/validators";
-import FloatingMetadataCard from "@/components/ui/FloatingMetadataCard";
-import TokenInput from "@/components/ui/TokenInput";
-import AnalysisResults from "@/components/ui/AnalysisResults";
-import Logo from "../ui/Logo";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Search, Brain, Upload, Sparkles } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Logo from '@/components/ui/Logo';
+import { useToast } from '@/hooks/use-toast';
 
 export default function HeroSection() {
-  const [repoUrl, setRepoUrl] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isValid, setIsValid] = useState(true);
-  const [analysisResults, setAnalysisResults] = useState(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    setRepoUrl(url);
-    setIsValid(url === "" || validateRepoUrl(url));
+    setSearchQuery(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!repoUrl) {
+    if (!searchQuery.trim()) {
       toast({
-        title: "URL required",
-        description: "Please enter a GitHub or GitLab repository URL",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!validateRepoUrl(repoUrl)) {
-      setIsValid(false);
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid GitHub or GitLab repository URL",
+        title: "Please enter your research query",
+        description: "Enter a research topic, question, or upload a paper to get started.",
         variant: "destructive",
       });
       return;
     }
 
     setIsLoading(true);
-    setAnalysisResults(null);
-
+    
     try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: repoUrl }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Extraction failed');
-      }
-
-      setAnalysisResults(data.data);
+      // Navigate to analysis page with the search query
+      router.push(`/analysis?query=${encodeURIComponent(searchQuery)}`);
+      
       toast({
-        title: "Extraction complete",
-        description: "Repository metadata has been extracted successfully",
+        title: "Starting research analysis",
+        description: "Redirecting to the analysis workspace...",
       });
+      
     } catch (error) {
       toast({
-        title: "Extraction failed",
+        title: "Navigation failed",
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
@@ -78,7 +54,24 @@ export default function HeroSection() {
     }
   };
 
-  const platform = getPlatformFromUrl(repoUrl);
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'upload':
+        router.push('/analysis');
+        break;
+      case 'explore':
+        router.push('/papers');
+        break;
+      case 'generate':
+        router.push('/hypotheses');
+        break;
+      case 'collaborate':
+        router.push('/collaborate');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <section className="relative w-full overflow-hidden px-4 py-20 sm:px-6 lg:px-8 lg:py-32">
@@ -91,7 +84,8 @@ export default function HeroSection() {
           ResearchGraph AI
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          Part of the ResearchGraph AI ecosystem - Enhancing research software discoverability through automated extraction of FAIR-compliant metadata using fine-tuned AI models.
+          Transform scientific research with AI-powered analysis, blockchain-verified citations, and collaborative knowledge graphs. 
+          Accelerate discovery through decentralized science.
         </p>
         
         <form onSubmit={handleSubmit} className="mx-auto mt-10 max-w-2xl space-y-6">
@@ -99,119 +93,112 @@ export default function HeroSection() {
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-0 h-5 w-5 mt-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                type="url" 
-                value={repoUrl}
+                type="text" 
+                value={searchQuery}
                 onChange={handleInputChange}
-                placeholder="Enter GitHub or GitLab repository URL"
-                className={`h-12 bg-secondary pl-10 ${!isValid ? 'border-destructive focus-visible:ring-destructive' : 'border-border'}`}
+                placeholder="Enter your research question or topic..."
+                className="h-12 bg-secondary pl-10 border-border"
               />
-              {!isValid && (
-                <p className="mt-2 text-left text-sm text-destructive">
-                  Please enter a valid GitHub or GitLab repository URL
-                </p>
-              )}
             </div>
             <Button 
               type="submit"
               size="lg"
-              className="h-12 min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-12 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               disabled={isLoading}
             >
               {isLoading ? (
-                <span className="flex items-center">
-                  <span className="mr-2 animate-spin">⟳</span> Extracting...
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Analyzing...
+                </div>
               ) : (
-                <span className="flex items-center">
-                  Extract <ArrowRight className="ml-2 h-5 w-5" />
-                </span>
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  Analyze with AI
+                </div>
               )}
             </Button>
           </div>
-
-          <TokenInput platform={platform} />
         </form>
 
-        {!analysisResults && !isLoading && (
-          <div className="relative mt-32 h-[500px]">
-            <FloatingMetadataCard 
-              position={{ top: '15%', left: '10%', transform: 'rotate(-3deg)' } as any}
-              delay={0}
-              icon={<Package className="h-5 w-5" />}
-              data={{
-                type: "dependencies",
-                content: "numpy, pandas, scikit-learn"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ top: '35%', left: '25%', transform: 'rotate(2deg)' } as any}
-              delay={0.3}
-              icon={<Users className="h-5 w-5" />}
-              data={{
-                type: "authors",
-                content: "Dr. Jane Smith, Alex Johnson"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ bottom: '20%', left: '15%', transform: 'rotate(-2deg)' } as any}
-              delay={0.6}
-              icon={<BookOpen className="h-5 w-5" />}
-              data={{
-                type: "DOI",
-                content: "10.1000/xyz123"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ top: '20%', right: '20%', transform: 'rotate(3deg)' } as any}
-              delay={0.9}
-              icon={<FileCode className="h-5 w-5" />}
-              data={{
-                type: "installation",
-                content: "pip install -r requirements.txt"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ top: '45%', right: '30%', transform: 'rotate(-2deg)' } as any}
-              delay={1.2}
-              icon={<UserPlus className="h-5 w-5" />}
-              data={{
-                type: "contributors",
-                content: "Maria Garcia, Tom Wilson"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ bottom: '25%', right: '15%', transform: 'rotate(10deg)' } as any}
-              delay={1.5}
-              icon={<Scale className="h-5 w-5" />}
-              data={{
-                type: "license",
-                content: "MIT License"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ top: '60%', left: '35%', transform: 'rotate(-5deg)' } as any}
-              delay={1.8}
-              icon={<Tag className="h-5 w-5" />}
-              data={{
-                type: "keywords",
-                content: "machine learning, data analysis"
-              }}
-            />
-            <FloatingMetadataCard 
-              position={{ top: '25%', left: '45%', transform: 'rotate(1deg)' } as any}
-              delay={2.1}
-              icon={<Coins className="h-5 w-5" />}
-              data={{
-                type: "funding",
-                content: "NSF Grant #123456"
-              }}
-            />
-          </div>
-        )}
+        {/* Quick Action Buttons */}
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 bg-background/50 backdrop-blur-sm border-border/50"
+              onClick={() => handleQuickAction('upload')}
+            >
+              <Upload className="h-5 w-5 text-blue-600" />
+              <span className="text-sm">Upload Paper</span>
+            </Button>
+          </motion.div>
 
-        {analysisResults && (
-          <AnalysisResults data={analysisResults} />
-        )}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 bg-background/50 backdrop-blur-sm border-border/50"
+              onClick={() => handleQuickAction('explore')}
+            >
+              <Search className="h-5 w-5 text-green-600" />
+              <span className="text-sm">Explore Papers</span>
+            </Button>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 bg-background/50 backdrop-blur-sm border-border/50"
+              onClick={() => handleQuickAction('generate')}
+            >
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              <span className="text-sm">Generate Ideas</span>
+            </Button>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2 bg-background/50 backdrop-blur-sm border-border/50"
+              onClick={() => handleQuickAction('collaborate')}
+            >
+              <Brain className="h-5 w-5 text-orange-600" />
+              <span className="text-sm">Collaborate</span>
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Stats */}
+        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-2xl mx-auto">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">10K+</div>
+            <div className="text-sm text-muted-foreground">Papers Analyzed</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">500+</div>
+            <div className="text-sm text-muted-foreground">Researchers</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">2K+</div>
+            <div className="text-sm text-muted-foreground">Knowledge Graphs</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600">1M+</div>
+            <div className="text-sm text-muted-foreground">Citations Tracked</div>
+          </div>
+        </div>
       </div>
     </section>
   );
