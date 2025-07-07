@@ -1,70 +1,95 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { extractGitHubContent, extractGitLabContent } from '@/lib/extractors';
-import { processRepositoryData } from '@/lib/utils';
 
 export async function POST(request: Request) {
   try {
-    const { url } = await request.json();
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const text = formData.get('text') as string;
+    const extractEntities = formData.get('extractEntities') === 'true';
+    const detectNullResults = formData.get('detectNullResults') === 'true';
+    const generateSummary = formData.get('generateSummary') === 'true';
+    const generateHypotheses = formData.get('generateHypotheses') === 'true';
+    const qualityAssessment = formData.get('qualityAssessment') === 'true';
+    const fairAssessment = formData.get('fairAssessment') === 'true';
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     
-    if (!url) {
-      return NextResponse.json({ error: 'Repository URL is required' }, { status: 400 });
-    }
+    // If file is provided, read the content directly and analyze
+    if (file) {
+      try {
+        // Read file content directly
+        const fileContent = await file.text();
 
-    const platform = url.includes('github.com') ? 'github' : 'gitlab';
-    const cookieStore = cookies();
-    const token = cookieStore.get(`vcs-token-${platform}`)?.value;
-
-    const content = platform === 'github' 
-      ? await extractGitHubContent(url, token)
-      : await extractGitLabContent(url, token); 
-
-    const llmApiUrl = process.env.LLM_API_URL || 'https://your-default-llm-api-url.com/generate_ollama_response';
-    const llmModelName = process.env.LLM_MODEL_NAME || 'metadata-extractor';
-
-    try {
-      const llmResponse = await fetch(llmApiUrl, {
+        // Analyze the file content
+        const analysisResponse = await fetch(`${backendUrl}/api/analyze/paper`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: content,
-          model: llmModelName,
+            text: fileContent,
+            title: file.name,
+          extract_entities: extractEntities,
+          detect_null_results: detectNullResults,
+          generate_summary: generateSummary,
+          generate_hypotheses: generateHypotheses,
         }),
       });
 
-      if (!llmResponse.ok) {
-        const errorData = await llmResponse.text();
-        console.error('LLM API error:', errorData);
-        throw new Error(`LLM API request failed with status ${llmResponse.status}: ${errorData}`);
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.text();
+        throw new Error(`Analysis failed: ${errorData}`);
       }
 
-      const llmResult = await llmResponse.json();
-      console.log('LLM API response:', llmResult);
-      
-      const { success, responseData, formattedRawResponse, message } = processRepositoryData(llmResult);
-      
+      const analysisResult = await analysisResponse.json();
       return NextResponse.json({
-        success,
-        data: responseData,
-        parsingError: !success,
-        message,
-        rawResponse: formattedRawResponse
+        success: true,
+        data: analysisResult,
+        source: 'file',
+        filename: file.name,
       });
-
-    } catch (llmError) {
-      console.error('Error calling LLM API:', llmError);
-      return NextResponse.json(
-        { error: llmError instanceof Error ? llmError.message : 'Failed to get results from LLM' },
-        { status: 500 }
-      );
+      } catch (error) {
+        throw new Error(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
 
+    // If text is provided directly
+    if (text) {
+      const analysisResponse = await fetch(`${backendUrl}/api/analyze/paper`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: text,
+          extract_entities: extractEntities,
+          detect_null_results: detectNullResults,
+          generate_summary: generateSummary,
+          generate_hypotheses: generateHypotheses,
+        }),
+      });
+
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.text();
+        throw new Error(`Analysis failed: ${errorData}`);
+      }
+
+      const analysisResult = await analysisResponse.json();
+      return NextResponse.json({
+        success: true,
+        data: analysisResult,
+        source: 'text',
+      });
+    }
+
+    return NextResponse.json({ 
+      error: 'No file or text provided for analysis' 
+    }, { status: 400 });
+
   } catch (error) {
-    console.error('Extraction error:', error);
+    console.error('Analysis error:', error);
     return NextResponse.json(
-      { error: 'Failed to analyze repository' },
+      { error: error instanceof Error ? error.message : 'Analysis failed' },
       { status: 500 }
     );
   }
