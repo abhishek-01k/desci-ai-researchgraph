@@ -1,23 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import Navigation from '@/components/layout/Navigation';
 import { Toaster } from '@/components/ui/toaster';
 import ResearchAssistantProvider from '@/components/providers/ResearchAssistantProvider';
 import { Web3Provider } from '@/components/providers/Web3Provider';
-
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-jetbrains-mono',
-});
+import { inter, jetbrainsMono } from '@/lib/fonts';
 
 export const metadata: Metadata = {
   title: 'ResearchGraph AI - Revolutionizing Scientific Discovery',
